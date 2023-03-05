@@ -1,0 +1,40 @@
+debug: true
+spring:
+  profiles.active: test
+  h2:
+    console:
+      enabled: true
+  jpa:
+    properties:
+      hibernate.ddl-auto: create-drop
+  liquibase.enabled: false
+logging:
+  level:
+    root: info
+    org.hibernate.SQL: debug                    # Output queries (debug)
+    org.hibernate.type.descriptor.sql: trace    # Output bound parameter values (trace)
+    org.hibernate.engine.transaction: debug     # Output transactional boundaries (debug)
+  pattern: '%d{ABSOLUTE} [%X{X-B3-TraceId}/%X{X-B3-SpanId}] %-5p [%t] %C{2} - %m%n'
+scheduled.tasks.enabled: false
+asset:
+  kafka:
+    bootstrap.servers: localhost:9092
+    group.id: ${spring.application.name}
+    key.serializer: org.apache.kafka.common.serialization.ByteArraySerializer
+    value.serializer: org.apache.kafka.common.serialization.ByteArraySerializer
+    topics:
+      asset-promotion: asset.events.asset-promoted
+
+resilience4j.circuitbreaker :
+  configs:
+    default:
+      slidingWindowSize: 100
+      permittedNumberOfCallsInHalfOpenState: 10
+      waitDurationInOpenState: 60000
+      failureRateThreshold: 60
+      eventConsumerBufferSize: 10
+      registerHealthIndicator: true
+---
+# Profile for standard test environment
+spring:
+  profiles: test

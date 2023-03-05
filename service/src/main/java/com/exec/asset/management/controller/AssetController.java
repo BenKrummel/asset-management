@@ -21,8 +21,12 @@ public class AssetController implements AssetsApi {
 
     private static final int PAGE_SIZE = 50;
 
-    @Autowired
     private AssetControllerService assetControllerService;
+
+    @Autowired
+    public AssetController(AssetControllerService assetControllerService) {
+        this.assetControllerService = assetControllerService;
+    }
 
     @Override
     public ResponseEntity<AssetModel> createAsset(AssetModel assetModel) {

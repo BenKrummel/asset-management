@@ -1,31 +1,33 @@
 package com.exec.asset.management.domain.entities;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.UUID;
 
-import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
-import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
 import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
 import org.hibernate.annotations.Type;
 
-@Data
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 @Entity
+@Getter
+@Setter
 @Table(name = "assets")
 public class AssetEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.TABLE)
+    @GeneratedValue(generator = "uuid2")
     @Type(type = "uuid-char")
     @Column
     private UUID id;
@@ -33,8 +35,7 @@ public class AssetEntity {
     @Column
     private Boolean promoted;
 
+    @Type(type = "uuid-char")
     @Column
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
-    @JoinColumn(name = "parent_id", referencedColumnName = "id")
-    private AssetEntity parentEntity;
+    private UUID parentId;
 }

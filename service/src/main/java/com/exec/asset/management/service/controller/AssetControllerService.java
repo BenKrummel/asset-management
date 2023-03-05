@@ -28,10 +28,14 @@ import com.exec.asset.management.service.repository.AssetRepositoryService;
 @Slf4j
 public class AssetControllerService {
 
-    @Autowired
     private AssetRepositoryService assetRepositoryService;
-    @Autowired
     private AssetMapper assetMapper;
+
+    @Autowired
+    public AssetControllerService(AssetRepositoryService assetRepositoryService, AssetMapper assetMapper) {
+        this.assetRepositoryService = assetRepositoryService;
+        this.assetMapper = assetMapper;
+    }
 
     public PagedAssetsModel getPagedAssets(PageRequest pageRequest) {
         return pagedAssetsResponse(assetRepositoryService.getAllAssets(pageRequest));
@@ -46,11 +50,11 @@ public class AssetControllerService {
     }
 
     public AssetModel createAsset(AssetModel assetModel) {
-        UUID parentAssetId = assetModel.getId();
+        UUID parentAssetId = assetModel.getParentId();
         log.debug("AssetControllerService:createAsset: Creating asset with parent id {}", parentAssetId);
         AssetEntity assetEntity = assetMapper.mapAssetModelToAssetEntity(assetModel);
 
-        assetEntity = setParentEntity(assetEntity, parentAssetId);
+        assetEntity = setParentIdIfValid(assetEntity, parentAssetId);
 
         return assetMapper.mapAssetEntityToAssetModel(assetRepositoryService.saveAsset(assetEntity));
     }
@@ -67,16 +71,17 @@ public class AssetControllerService {
             promoteChildAssets(assetEntity);
         }
 
-        assetEntity = setParentEntity(assetEntity, assetModel.getParentId());
+        assetEntity = setParentIdIfValid(assetEntity, assetModel.getParentId());
         assetEntity.setPromoted(assetModel.getPromoted());
 
         return assetMapper.mapAssetEntityToAssetModel(assetRepositoryService.saveAsset(assetEntity));
     }
 
-    private AssetEntity setParentEntity(AssetEntity assetEntity, UUID parentAssetId) {
+    private AssetEntity setParentIdIfValid(AssetEntity assetEntity, UUID parentAssetId) {
         if (parentAssetId != null) {
             log.debug("AssetControllerService:createAsset: Finding parent asset with id {}", parentAssetId);
-            assetEntity.setParentEntity(assetRepositoryService.findAssetById(parentAssetId).orElseThrow(() -> new ParentAssetDoesNotExistException(parentAssetId)));
+            AssetEntity parentAssetEntity = assetRepositoryService.findAssetById(parentAssetId).orElseThrow(() -> new ParentAssetDoesNotExistException(parentAssetId));
+            assetEntity.setParentId(parentAssetEntity.getId());
         }
         return assetEntity;
     }

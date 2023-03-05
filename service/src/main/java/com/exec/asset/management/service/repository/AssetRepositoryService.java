@@ -17,8 +17,12 @@ import com.exec.asset.management.repository.AssetRepository;
 @Service
 @Slf4j
 public class AssetRepositoryService {
-    @Autowired
     private AssetRepository assetRepository;
+
+    @Autowired
+    public AssetRepositoryService (AssetRepository assetRepository) {
+        this.assetRepository = assetRepository;
+    }
 
     public AssetEntity saveAsset(AssetEntity assetEntity) {
         log.debug("AssetRepositoryService:saveAsset: Saving asset id: {}", assetEntity.getId());

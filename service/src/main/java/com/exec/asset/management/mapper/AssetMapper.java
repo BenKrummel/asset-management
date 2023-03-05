@@ -12,7 +12,7 @@ public class AssetMapper {
         AssetModel assetModel = new AssetModel();
         assetModel.setId(assetEntity.getId());
         assetModel.promoted(assetEntity.getPromoted());
-        assetModel.setParentId(assetEntity.getParentEntity() != null ? assetEntity.getParentEntity().getId() : null);
+        assetModel.setParentId(assetEntity.getParentId());
         return assetModel;
     }
 

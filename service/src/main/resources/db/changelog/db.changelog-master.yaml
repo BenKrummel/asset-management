@@ -2,3 +2,5 @@ databaseChangeLog:
   - property:
       name: schemaName
       value: ""
+  - include:
+      file: db/migrations/v1.0_create_asset_table.yaml
