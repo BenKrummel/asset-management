@@ -1,0 +1,35 @@
+apply plugin: 'se.patrikerdes.use-latest-versions'
+apply plugin: 'com.github.ben-manes.versions'
+
+// Recommendation from gradle-version plugin https://github.com/ben-manes/gradle-versions-plugin#revisions to skip unstable versions
+def isNonStable = { String version ->
+    def stableKeyword = ['RELEASE', 'FINAL', 'GA'].any { it -> version.toUpperCase().contains(it) }
+    def regex = /^[0-9,.v-]+(-r)?$/
+    return !stableKeyword && !(version ==~ regex)
+}
+
+tasks.named("dependencyUpdates").configure {
+    rejectVersionIf {
+        isNonStable(it.candidate.version)
+    }
+
+    rejectVersionIf {
+        isNonStable(it.candidate.version) && !isNonStable(it.currentVersion)
+    }
+
+    resolutionStrategy {
+        componentSelection {
+            all {
+                if (isNonStable(it.candidate.version) && !isNonStable(it.currentVersion)) {
+                    reject('Release candidate')
+                }
+            }
+        }
+    }
+}
+
+useLatestVersions {
+    updateBlacklist = [
+            'com.microsoft.sqlserver:mssql-jdbc'    // locked to jre11
+    ]
+}

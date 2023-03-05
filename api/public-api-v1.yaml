@@ -1,0 +1,198 @@
+# This Open API Specification file contains a list of APIs that will be registered with the public BY API gateway.
+# The API documentation will also be published to the customer facing developer portal.
+openapi: 3.0.0
+info:
+  description: This is the API from Asset Management Service.
+  version: 1.0.0
+  title: Asset Management Service
+tags:
+  - name: asset-management-service
+    description: Asset Management Service
+paths:
+  /assets:
+    get:
+      operationId: listAssets
+      summary: Gets a paged response of assets
+      tags:
+        - assets
+      parameters:
+        - $ref: '#/components/parameters/pageNumber'
+        - $ref: '#/components/parameters/pageSize'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedAssets'
+          description:
+            returns a page of assets.
+    post:
+      operationId: createAsset
+      summary: creates a given asset.
+      tags:
+        - assets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Asset'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+          description: create yard.
+  /assets/{id}:
+    get:
+      operationId: getAssetsById
+      summary: Gets an asset by ID.
+      tags:
+        - assets
+      parameters:
+        - $ref: '#/components/parameters/assetIdInPath'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+          description: returns an asset.
+    put:
+      operationId: updateAsset
+      summary: updates a given asset.
+      tags:
+        - assets
+      parameters:
+        - $ref: '#/components/parameters/assetIdInPath'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Asset'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+          description: updated asset.
+    delete:
+      operationId: deleteAsset
+      summary: delete asset by ID.
+      tags:
+        - assets
+      parameters:
+        - $ref: '#/components/parameters/assetIdInPath'
+      responses:
+        "204":
+          description: yard deleted
+        "404":
+          description: Yard Id not found
+        "400":
+          description: bad yard
+components:
+  parameters:
+    assetIdInPath:
+      name: id
+      description: the unique identifier that identifies an asset.
+      explode: false
+      in: path
+      required: true
+      schema:
+        format: UUID
+        type: string
+      style: simple
+    pageSize:
+      name: pageSize
+      description: the maximum number of entries to return.
+      in: query
+      schema:
+        type: integer
+        format: int32
+        default: 50
+        minimum: 1
+    pageNumber:
+      name: pageNumber
+      description: >-
+        The specific page of data to return. The size of this
+        page is determined by the pageSize parameter.
+      in: query
+      schema:
+        type: integer
+        format: int32
+        default: 0
+        minimum: 0
+  schemas:
+    Asset:
+      example:
+        - id: '8908a9e8-bb6d-11ed-afa1-0242ac120002'
+          promoted: false
+          parentId: UUID
+      properties:
+        id:
+          format: UUID
+          type: string
+        promoted:
+          type: boolean
+        parentId:
+          format: UUID
+          type: string
+    PagedAssets:
+      example:
+        entities:
+          - id: '8908a9e8-bb6d-11ed-afa1-0242ac120002'
+            promoted: false
+            parentId: UUID
+          - id: '98bdb1ee-bb6d-11ed-afa1-0242ac120002'
+            promoted: true
+            parentId: '8908a9e8-bb6d-11ed-afa1-0242ac120002'
+          - id: 'aa289f8e-bb6d-11ed-afa1-0242ac120002'
+            promoted: true
+            parentId: '98bdb1ee-bb6d-11ed-afa1-0242ac120002'
+        meta:
+          page:
+            pageNumber: 0
+            pageSize: 50
+            totalCount: 3
+        count: 3
+      properties:
+        meta:
+          $ref: '#/components/schemas/Meta'
+        count:
+          format: int32
+          type: integer
+        entities:
+          items:
+            $ref: '#/components/schemas/Asset'
+          type: array
+      type: object
+    Meta:
+      type: object
+      properties:
+        page:
+          $ref: '#/components/schemas/PageMeta'
+    PageMeta:
+      description: >-
+        Contains information about a 'page' of entities returned in a response
+      type: object
+      properties:
+        totalCount:
+          type: integer
+          format: int64
+          description: >-
+            The total number of records available across all pages.
+            This value may not be populated if the total count cannot
+            be determined or it is inefficient to do so.
+        pageNumber:
+          type: integer
+          format: int32
+          description: >-
+            The page number to which the returned entities belong.
+        pageSize:
+          type: integer
+          format: int32
+          description: >-
+            The size of the page.
+            Note: the actual count returned may be less than this value
+            if there are not enough entities available to be returned.

@@ -1,0 +1,4 @@
+databaseChangeLog:
+  - property:
+      name: schemaName
+      value: ""

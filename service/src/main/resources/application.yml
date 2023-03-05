@@ -1,0 +1,42 @@
+debug: true
+spring:
+  application.name: asset-management
+  datasource:
+    url: jdbc:sqlserver://localhost:1433;encrypt=false;trustServerCertificate=true
+    driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    username: super
+    password: super
+  jpa:
+    properties:
+      hibernate:
+        jdbc.batch_size: 10 #batch_size
+        batch_versioned_data: true
+        order_inserts: true
+        order_updates: true
+        jdbc.time_zone: UTC
+        default_schema: asset_management
+multitenant:
+  provisioning:
+    database:
+      template: IF ((select count(*) from sys.databases where name = N'{database_name}') = 0) BEGIN CREATE DATABASE [{database_name}] ALTER DATABASE [{database_name}] SET READ_COMMITTED_SNAPSHOT ON END;
+  datasource:
+    url:
+      template: ${spring.datasource.url};databaseName=assetManagement_{tenant_id}
+# Actuator endpoint Configuration
+management.health.db.enabled: false
+management.endpoint.health.probes.enabled: true
+management.health.livenessstate.enabled: true
+management.health.readinessstate.enabled: true
+management.endpoints.web.exposure.include: env,health,info,loggers,metrics,threaddump
+
+#management.endpoints.web.exposure.include: loggers,health
+management.endpoint.loggers.enabled: true
+management.endpoint.health.group.readiness.include: "*"
+management.endpoint.health.group.readiness.show-details: always
+management.endpoint.health.group.liveness.include: ping
+management.endpoint.health.group.liveness.show-details: never
+#management.health.db.enabled: false
+health.endpoint.security.api-key: ${ACTUATOR_API_KEY:}
+
+server:
+  port: 8080

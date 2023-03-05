@@ -1,0 +1,107 @@
+plugins {
+    id 'org.openapi.generator' version '5.2.1'
+}
+
+def generatedPackage = { String relative -> "${ext.apiRootPackage}.$relative" }
+
+dependencies {
+    implementation 'io.swagger:swagger-annotations'
+    implementation 'javax.annotation:javax.annotation-api'
+    implementation 'javax.validation:validation-api'
+    implementation 'org.openapitools:jackson-databind-nullable:0.2.2'
+    implementation 'com.fasterxml.jackson.core:jackson-core'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'org.springframework.kafka:spring-kafka'
+
+    compileOnly 'org.springframework:spring-webmvc'
+    compileOnly 'javax.servlet:javax.servlet-api'
+    compileOnly 'org.springframework.data:spring-data-commons'
+
+    compileOnly group: 'io.springfox', name: 'springfox-core', version: '3.0.0'
+}
+
+// Generate classes, docs, & bundled spec for each *-api.yaml file found in the modules's root directory
+def apiYamlDir = new File(projectDir.toString())
+def apiName = "asset-management-events"
+
+apiYamlDir.eachFileMatch(~/.*-api-.*.yaml/) { file ->
+    def name = file.getName().replaceAll(".yaml", "")
+    def yamlFile = file.getPath()
+    def generateAPIClassesTaskName = "generatePublicApiClasses_$name"
+
+    tasks.register(generateAPIClassesTaskName, org.openapitools.generator.gradle.plugin.tasks.GenerateTask) {
+        generatorName = "spring"
+        inputSpec = yamlFile
+        outputDir = "$buildDir/generated".toString()
+        modelNameSuffix = 'Model'
+        ignoreFileOverride = "$projectDir/.openapi-generator-ignore"
+        configOptions = [
+                dateLibrary         : 'java11',
+                apiPackage          : generatedPackage('api'),
+                modelPackage        : generatedPackage('api.model'),
+                interfaceOnly       : 'true',
+                skipDefaultInterface: 'true',
+                useTags             : 'true'
+        ]
+    }
+
+    def generateAPIDocsTaskName = "generateApiDocs_$name"
+    tasks.register(generateAPIDocsTaskName, org.openapitools.generator.gradle.plugin.tasks.GenerateTask) {
+        generatorName = 'html'
+        inputSpec = yamlFile
+        outputDir = "$projectDir/docs/$name/html".toString()
+    }
+
+    def generateBundledYamlTaskName = "generateBundledYaml_$name"
+    tasks.register(generateBundledYamlTaskName, org.openapitools.generator.gradle.plugin.tasks.GenerateTask) {
+        generatorName = 'openapi-yaml'
+        inputSpec = yamlFile
+        configOptions = [
+                outputFile: "${apiName}-${name}.yaml"
+        ]
+        outputDir = "$projectDir/docs/$name/yaml".toString()
+    }
+
+    compileJava.dependsOn generateAPIClassesTaskName, generateAPIDocsTaskName, generateBundledYamlTaskName
+}
+
+sourceSets.main.java.srcDir "${buildDir}/generated/src/main/java"
+
+task modelsJar(type: Jar) {
+    archiveBaseName.set("$project.name-models")
+    archiveClassifier.set('models')
+    includeEmptyDirs = false
+    from sourceSets.main.output
+    include '**/model/**'
+}
+
+publishing {
+    publications {
+        api(MavenPublication) {
+            from components.java
+            artifact source: modelsJar, classifier: 'models'
+        }
+    }
+}
+
+clean {
+    delete "$projectDir/docs"
+}
+
+// Sync Open API Specs used for APIM configuration during build process.
+task collectPublicAPIYamls(type: Copy) {
+    includeEmptyDirs = false
+    from("$projectDir/docs/") {
+        include '**/*public-api*.yaml'
+    }
+    eachFile {
+        path = name
+    }
+    into "$projectDir/apim/"
+}
+
+repositories {
+    mavenCentral()
+}
+
+tasks.build.dependsOn tasks.collectPublicAPIYamls
