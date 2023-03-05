@@ -1,7 +1,9 @@
 package com.exec.asset.management.util;
 
 import org.hibernate.context.spi.CurrentTenantIdentifierResolver;
+import org.springframework.stereotype.Component;
 
+@Component
 public class MultiTenantIdentifierResolver implements CurrentTenantIdentifierResolver {
 
     private static final String DEFAULT_TENANT_ID = "public";
