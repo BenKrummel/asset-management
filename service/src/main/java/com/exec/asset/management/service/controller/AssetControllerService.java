@@ -2,6 +2,8 @@ package com.exec.asset.management.service.controller;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -17,10 +19,12 @@ import com.exec.asset.management.api.model.MetaModel;
 import com.exec.asset.management.api.model.PageMetaModel;
 import com.exec.asset.management.api.model.PagedAssetsModel;
 import com.exec.asset.management.domain.entities.AssetEntity;
+import com.exec.asset.management.event.publisher.KafkaMessagingSystemService;
 import com.exec.asset.management.exception.AssetDoesNotExistException;
 import com.exec.asset.management.exception.MismatchedIds;
 import com.exec.asset.management.exception.ParentAssetDoesNotExistException;
 import com.exec.asset.management.mapper.AssetMapper;
+import com.exec.asset.management.service.message.AssetPublisherService;
 import com.exec.asset.management.service.repository.AssetRepositoryService;
 
 @Service
@@ -30,11 +34,14 @@ public class AssetControllerService {
 
     private AssetRepositoryService assetRepositoryService;
     private AssetMapper assetMapper;
+    private AssetPublisherService assetPublisherService;
+    private final List<AssetEntity> updatedAssetList = new ArrayList<>();
 
     @Autowired
-    public AssetControllerService(AssetRepositoryService assetRepositoryService, AssetMapper assetMapper) {
+    public AssetControllerService(AssetRepositoryService assetRepositoryService, AssetMapper assetMapper, AssetPublisherService assetPublisherService) {
         this.assetRepositoryService = assetRepositoryService;
         this.assetMapper = assetMapper;
+        this.assetPublisherService = assetPublisherService;
     }
 
     public PagedAssetsModel getPagedAssets(PageRequest pageRequest) {
@@ -66,7 +73,8 @@ public class AssetControllerService {
 
         AssetEntity assetEntity = assetRepositoryService.findAssetById(assetId).orElseThrow(() -> new AssetDoesNotExistException(assetId));
 
-        // If it was already promoted don't promote the children again.
+        // This is under the assumption if we modify an existing asset we shouldn't call promote children if the entity was previously promoted.
+        // If this assumption is wrong then the if statement would change to assetModel.getPromoted()
         if (!assetEntity.getPromoted() && assetModel.getPromoted()) {
             promoteChildAssets(assetEntity);
         }
@@ -86,8 +94,24 @@ public class AssetControllerService {
         return assetEntity;
     }
 
-    private void promoteChildAssets(AssetEntity assetEntity) {
+    public void promoteChildAssets(AssetEntity assetEntity) {
+        // Update the asset and its nested assets
+        promoteAssetAndNestedAssets(assetEntity);
 
+        // Save the updated assets in a single database call
+        assetRepositoryService.saveAll(updatedAssetList);
+    }
+
+    private void promoteAssetAndNestedAssets(AssetEntity asset) {
+        asset.setPromoted(true);
+        updatedAssetList.add(asset);
+        assetPublisherService.publishAssetPromotedEvent(assetMapper.mapAssetEntityToAssetPromotionEventModel(asset));
+
+        List<AssetEntity> nestedAssets = assetRepositoryService.getAssetsByParentId(asset.getId());
+        if (nestedAssets != null) {
+            // Process nested assets in parallel
+            nestedAssets.parallelStream().forEach(nestedAsset -> promoteAssetAndNestedAssets(nestedAsset));
+        }
     }
 
     private PagedAssetsModel pagedAssetsResponse(Page<AssetEntity> assetEntities) {

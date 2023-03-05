@@ -2,6 +2,7 @@ package com.exec.asset.management.service.repository;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -43,5 +44,13 @@ public class AssetRepositoryService {
     public Page<AssetEntity> getAllAssets(PageRequest pageRequest) {
         log.debug("AssetRepositoryService:getAllAddresses: get: {} assets per page", pageRequest.getPageSize());
         return assetRepository.findAll(pageRequest);
+    }
+
+    public List<AssetEntity> getAssetsByParentId(UUID parentId) {
+        return assetRepository.findByParentId(parentId);
+    }
+
+    public List<AssetEntity> saveAll(List<AssetEntity> assetEntities) {
+        return assetRepository.saveAll(assetEntities);
     }
 }

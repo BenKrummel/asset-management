@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.http.HttpStatus;
@@ -15,6 +16,7 @@ import com.exec.asset.management.exception.ParentAssetDoesNotExistException;
 import com.exec.asset.management.mapper.AssetMapper;
 import com.exec.asset.management.repository.AssetRepository;
 import com.exec.asset.management.service.controller.AssetControllerService;
+import com.exec.asset.management.service.message.AssetPublisherService;
 import com.exec.asset.management.service.repository.AssetRepositoryService;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -22,16 +24,19 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
 @DataJpaTest
 public class AssetControllerTest {
     @Autowired
     private AssetRepository assetRepository;
+    private AssetPublisherService assetPublisherService;
     private AssetController assetController;
 
     @BeforeEach
     void init() {
-        AssetControllerService assetControllerService = new AssetControllerService(new AssetRepositoryService(assetRepository), new AssetMapper());
+        assetPublisherService = mock(AssetPublisherService.class);
+        AssetControllerService assetControllerService = new AssetControllerService(new AssetRepositoryService(assetRepository), new AssetMapper(), assetPublisherService);
         assetController = new AssetController(assetControllerService);
     }
 
