@@ -37,7 +37,15 @@ public class AssetRepositoryService {
 
     public void deleteAsset(UUID id) {
         log.debug("AssetRepositoryService:deleteAsset: Delete asset with id: {}", id);
-        findAssetById(id).orElseThrow(() -> new AssetDoesNotExistException(id));
+        AssetEntity assetEntity = findAssetById(id).orElseThrow(() -> new AssetDoesNotExistException(id));
+        UUID parentId = assetEntity.getParentId();
+
+        getAssetsByParentId(id).parallelStream().forEach(assetEntity1 -> {
+            log.debug("AssetRepositoryService:deleteAsset: Updating child assets to be linked to deleted asset's parent id: {}", parentId);
+            assetEntity.setParentId(parentId);
+            assetRepository.save(assetEntity);
+        });
+
         assetRepository.deleteById(id);
     }
 

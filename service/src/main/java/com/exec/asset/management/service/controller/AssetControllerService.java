@@ -94,7 +94,7 @@ public class AssetControllerService {
         return assetEntity;
     }
 
-    public void promoteChildAssets(AssetEntity assetEntity) {
+    private void promoteChildAssets(AssetEntity assetEntity) {
         log.debug("AssetControllerService:promoteChildAssets: Promoting child assets and asset with id {}", assetEntity.getId());
         // Update the asset and its nested assets
         List<UUID> usedUuids = new ArrayList<>();
@@ -116,20 +116,25 @@ public class AssetControllerService {
             assetPublisherService.publishAssetPromotedEvent(assetMapper.mapAssetEntityToAssetPromotionEventModel(asset));
         }
 
+        // Lets make sure that the id that we are using wasn't already used to find children.
+        // So we avoid a circular dependency which would make us loop indefinitely.
         if (usedUuids.contains(asset.getId())) {
             log.debug("AssetControllerService:promoteAssetAndNestedAssets: Found a circling dependency so returning. Asset id: {} Parent id: ", asset.getId(), asset.getParentId());
             return;
         }
 
+        // add the asset id to a list of asset ids that we have previously traversed.
         usedUuids.add(asset.getId());
         List<AssetEntity> nestedAssets = assetRepositoryService.getAssetsByParentId(asset.getId());
-        if (!nestedAssets.isEmpty()) {
-            // Process nested assets in parallel
-            log.debug("AssetControllerService:promoteAssetAndNestedAssets: Found child assets number: {} parentId: {}", nestedAssets.size(), asset.getId());
-            // Would want to make this parallel at some point but deadlocks occur since a thread would update the child asset while another is trying to use that asset.
-            nestedAssets.forEach(nestedAsset -> promoteAssetAndNestedAssets(nestedAsset, usedUuids));
+
+        if(nestedAssets.isEmpty()) {
+            log.debug("AssetControllerService:promoteAssetAndNestedAssets: No child assets for parentId: {}", asset.getId());
+            return;
         }
-        return;
+        log.debug("AssetControllerService:promoteAssetAndNestedAssets: Found child assets number: {} parentId: {}", nestedAssets.size(), asset.getId());
+        // Would want to make this parallel at some point but deadlocks occur since a thread would update the child asset while another is trying to use that asset.
+        nestedAssets.forEach(nestedAsset -> promoteAssetAndNestedAssets(nestedAsset, usedUuids));
+
     }
 
     private PagedAssetsModel pagedAssetsResponse(Page<AssetEntity> assetEntities) {
