@@ -195,9 +195,11 @@ public class AssetControllerTest {
         Exception resultException = null;
         AssetModel assetModel = assetMapper.mapAssetEntityToAssetModel(assetRepository.save(AssetEntity.builder().promoted(false).build()));
         assetModel.setPromoted(true);
+        AssetListModel assetListModel = new AssetListModel();
+        assetListModel.setParentAsset(assetModel);
 
         try {
-            assetController.updateAsset(UUID.randomUUID(), assetModel);
+            assetController.updateAsset(UUID.randomUUID(), assetListModel);
         }
         catch (MismatchedIds e) {
             resultException = e;
@@ -212,7 +214,10 @@ public class AssetControllerTest {
         AssetModel assetModel = assetMapper.mapAssetEntityToAssetModel(assetRepository.save(AssetEntity.builder().promoted(false).build()));
         assetModel.setPromoted(true);
 
-        var response = assetController.updateAsset(assetModel.getId(), assetModel);
+        AssetListModel assetListModel = new AssetListModel();
+        assetListModel.setParentAsset(assetModel);
+
+        var response = assetController.updateAsset(assetModel.getId(), assetListModel);
 
         verify(assetPublisherService).publishAssetPromotedEvent(any(AssetPromotionEventModel.class));
         assertTrue(response.getBody().getPromoted());

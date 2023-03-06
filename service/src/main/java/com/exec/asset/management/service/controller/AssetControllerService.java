@@ -21,8 +21,10 @@ import com.exec.asset.management.api.model.PageMetaModel;
 import com.exec.asset.management.api.model.PagedAssetsModel;
 import com.exec.asset.management.domain.entities.AssetEntity;
 import com.exec.asset.management.exception.AssetDoesNotExistException;
+import com.exec.asset.management.exception.AssetIdCannotBeNullException;
 import com.exec.asset.management.exception.MismatchedIds;
 import com.exec.asset.management.exception.ParentAssetDoesNotExistException;
+import com.exec.asset.management.exception.ParentAssetRequiredException;
 import com.exec.asset.management.mapper.AssetMapper;
 import com.exec.asset.management.service.message.AssetPublisherService;
 import com.exec.asset.management.service.repository.AssetRepositoryService;
@@ -93,24 +95,38 @@ public class AssetControllerService {
         return returnModels;
     }
 
-    public AssetModel updateAsset(AssetModel assetModel, UUID assetId) {
-        if (!assetId.equals(assetModel.getId())) {
-            throw new MismatchedIds(assetModel.getId(), assetId);
+    public AssetModel updateAssetList(AssetListModel assetListModel, UUID assetId) {
+        AssetModel parentModel = assetListModel.getParentAsset();
+        if (parentModel == null) {
+            throw new ParentAssetRequiredException();
+        }
+        if (!assetId.equals(parentModel.getId())) {
+            throw new MismatchedIds(parentModel.getId(), assetId);
         }
 
-        log.debug("AssetControllerService:updateAsset: Updating asset with id: {}", assetId);
+        log.debug("AssetControllerService:updateAssetList: Updating asset with id: {}", assetId);
         AssetEntity assetEntity = assetRepositoryService.findAssetById(assetId).orElseThrow(() -> new AssetDoesNotExistException(assetId));
+
+        if (assetListModel.getChildAssets() != null) {
+            log.debug("AssetControllerService:updateAssetList: Updating child entities passed in to have the parent id updated.");
+            assetListModel.getChildAssets().forEach(assetModel -> {
+                if (assetModel.getId() == null) {
+                    throw new AssetIdCannotBeNullException();
+                }
+                AssetEntity updateEntity = assetRepositoryService.findAssetById(assetModel.getId()).orElseThrow(() -> new AssetDoesNotExistException(assetModel.getId()));
+                updateEntity.setParentId(assetId);
+                assetRepositoryService.saveAsset(updateEntity);
+            });
+        }
 
         // This is under the assumption if we modify an existing asset we shouldn't call promote children if the entity was previously promoted.
         // If this assumption is wrong then the if statement would change to assetModel.getPromoted()
-        if (!assetEntity.getPromoted() && assetModel.getPromoted()) {
-            log.debug("AssetControllerService:updateAsset: Promoting the asset and its child assets. entity promoted: {} model promoted: {}", assetEntity.getPromoted(), assetModel.getPromoted());
+        if (!assetEntity.getPromoted() && parentModel.getPromoted()) {
+            log.debug("AssetControllerService:updateAssetList: Promoting the asset and its child assets.");
             promoteChildAssets(assetEntity);
         }
 
-        assetEntity = setParentIdIfValid(assetEntity, assetModel.getParentId());
-        assetEntity.setPromoted(assetModel.getPromoted());
-
+        assetEntity = setParentIdIfValid(assetEntity, parentModel.getParentId());
         return assetMapper.mapAssetEntityToAssetModel(assetRepositoryService.saveAsset(assetEntity));
     }
 

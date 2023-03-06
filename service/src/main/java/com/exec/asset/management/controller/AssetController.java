@@ -51,7 +51,7 @@ public class AssetController implements AssetsApi {
     }
 
     @Override
-    public ResponseEntity<AssetModel> updateAsset(UUID id, AssetModel assetModel) {
-        return ResponseEntity.ok(assetControllerService.updateAsset(assetModel, id));
+    public ResponseEntity<AssetModel> updateAsset(UUID id, AssetListModel assetModel) {
+        return ResponseEntity.ok(assetControllerService.updateAssetList(assetModel, id));
     }
 }

@@ -74,9 +74,9 @@ The api document can be found
 
 | Body | Type     | Description                       |
 | :-------- | :------- | :-------------------------------- |
-| `AssetList`      | `AssetListModel` | **Required**. List of assets that have the following structure.|
+| `AssetList`      | `AssetList` | **Required**. List of assets that have the following structure.|
 
-```aidl
+```json
 {
   "ParentAsset": {
     "id": "8908a9e8-bb6d-11ed-afa1-0242ac120002",
@@ -120,7 +120,29 @@ The api document can be found
 
 | Body | Type     | Description                       |
 | :-------- | :------- | :-------------------------------- |
-| `Asset`      | `AssetModel` | **Required**. Asset Model Object to update the backend entity to.|
+| `AssetList`      | `AssetList` | **Required**. Parent Asset is the asset that you are going to be updating. Parent asset is required child assets are not. Child assets can be used to assign assets that were previously assigned to a different asset. |
+
+```json
+{
+  "ParentAsset": {
+    "id": "8908a9e8-bb6d-11ed-afa1-0242ac120002",
+    "promoted": false,
+    "parentId": "abf944ce-68a8-40f9-b01f-636f6d28f6b8"
+  },
+  "ChildAssets": [
+    {
+      "id": "ad059da9-3f1b-49bb-8b0e-5be52f7d166e",
+      "promoted": true,
+      "parentId": "8908a9e8-bb6d-11ed-afa1-0242ac120002"
+    },
+    {
+      "id": "3d57ba3b-84cc-4f29-aa45-cb50c24f4370",
+      "promoted": false,
+      "parentId": "8908a9e8-bb6d-11ed-afa1-0242ac120002"
+    }
+  ]
+}
+```
 
 #### Delete asset
 ```http

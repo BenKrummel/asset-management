@@ -13,12 +13,14 @@ import com.exec.asset.management.api.model.AssetListModel;
 import com.exec.asset.management.api.model.AssetModel;
 import com.exec.asset.management.domain.entities.AssetEntity;
 import com.exec.asset.management.domain.messages.AssetPromotionEventModel;
+import com.exec.asset.management.exception.ParentAssetRequiredException;
 import com.exec.asset.management.mapper.AssetMapper;
 import com.exec.asset.management.repository.AssetRepository;
 import com.exec.asset.management.service.message.AssetPublisherService;
 import com.exec.asset.management.service.repository.AssetRepositoryService;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -40,15 +42,34 @@ public class AssetControllerServiceTest {
     }
 
     @Test
-    public void updateAssetWithChildren() {
+    public void updateAssetListErrorNoParentAsset() {
+        Exception e = null;
+
+        try {
+            assetControllerService.updateAssetList(new AssetListModel(), UUID.randomUUID());
+        }
+        catch(ParentAssetRequiredException ex) {
+            e = ex;
+        }
+
+        assertNotNull(e);
+    }
+
+    @Test
+    public void updateAssetListWithChildren() {
         AssetModel assetModel = assetMapper.mapAssetEntityToAssetModel(assetRepository.save(AssetEntity.builder().promoted(false).build()));
         AssetEntity secondLevelAsset = assetRepository.save(AssetEntity.builder().promoted(false).parentId(assetModel.getId()).build());
-        AssetEntity secondLevelAsset2 = assetRepository.save(AssetEntity.builder().promoted(false).parentId(assetModel.getId()).build());
+        AssetEntity secondLevelAsset2 = assetRepository.save(AssetEntity.builder().promoted(false).build());
         assetRepository.save(AssetEntity.builder().promoted(false).parentId(secondLevelAsset2.getId()).build());
         assetRepository.save(AssetEntity.builder().promoted(false).parentId(secondLevelAsset.getId()).build());
         assetModel.setPromoted(true);
 
-        var response = assetControllerService.updateAsset(assetModel, assetModel.getId());
+        AssetListModel assetListModel = new AssetListModel();
+        assetListModel.setParentAsset(assetModel);
+        assetListModel.addChildAssetsItem(assetMapper.mapAssetEntityToAssetModel(secondLevelAsset));
+        assetListModel.addChildAssetsItem(assetMapper.mapAssetEntityToAssetModel(secondLevelAsset2));
+
+        var response = assetControllerService.updateAssetList(assetListModel, assetModel.getId());
 
         verify(assetPublisherService, Mockito.times(5)).publishAssetPromotedEvent(any(AssetPromotionEventModel.class));
         assertTrue(response.getPromoted());
@@ -56,10 +77,12 @@ public class AssetControllerServiceTest {
         assertTrue(assetRepository.findByParentId(assetModel.getId()).stream().allMatch(entity -> entity.getPromoted()));
         assertTrue(assetRepository.findByParentId(secondLevelAsset.getId()).stream().allMatch(entity -> entity.getPromoted()));
         assertTrue(assetRepository.findByParentId(secondLevelAsset2.getId()).stream().allMatch(entity -> entity.getPromoted()));
+        // Make sure we updated the asset to have the parentId.
+        assertEquals(assetModel.getId(), assetRepository.getById(secondLevelAsset2.getId()).getParentId());
     }
 
     @Test
-    public void updateAssetWithCircularDependency() {
+    public void updateAssetListWithCircularDependency() {
         AssetEntity topLevelAsset = assetRepository.save(AssetEntity.builder().promoted(false).build());
         AssetEntity secondLevelAsset = assetRepository.save(AssetEntity.builder().promoted(false).parentId(topLevelAsset.getId()).build());
         assetRepository.save(AssetEntity.builder().promoted(false).parentId(secondLevelAsset.getId()).build());
@@ -68,7 +91,10 @@ public class AssetControllerServiceTest {
         AssetModel assetModel = assetMapper.mapAssetEntityToAssetModel(assetRepository.save(topLevelAsset));
         assetModel.setPromoted(true);
 
-        var response = assetControllerService.updateAsset(assetModel, assetModel.getId());
+        AssetListModel assetListModel = new AssetListModel();
+        assetListModel.setParentAsset(assetModel);
+
+        var response = assetControllerService.updateAssetList(assetListModel, assetModel.getId());
 
         verify(assetPublisherService, Mockito.times(3)).publishAssetPromotedEvent(any(AssetPromotionEventModel.class));
         assertTrue(response.getPromoted());

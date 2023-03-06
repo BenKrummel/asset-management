@@ -62,7 +62,10 @@ paths:
           description: returns an asset.
     put:
       operationId: updateAsset
-      summary: updates a given asset.
+      summary: |
+        Parent Asset is the asset that you are going to be updating.
+        Parent asset is required child assets are not.
+        Child assets can be used to assign assets that were previously assigned to a different asset.
       tags:
         - assets
       parameters:
@@ -71,7 +74,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Asset'
+              $ref: '#/components/schemas/AssetList'
       responses:
         "200":
           content:
