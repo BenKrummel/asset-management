@@ -18,7 +18,7 @@ import com.exec.asset.management.service.controller.AssetControllerService;
 @RequestMapping("/v1")
 public class AssetController implements AssetsApi {
 
-    private static final int PAGE_SIZE = 50;
+    protected static final int PAGE_SIZE = 50;
 
     private AssetControllerService assetControllerService;
 
@@ -39,7 +39,7 @@ public class AssetController implements AssetsApi {
     }
 
     @Override
-    public ResponseEntity<AssetModel> getAssetsById(UUID id) {
+    public ResponseEntity<AssetModel> getAssetById(UUID id) {
         return ResponseEntity.ok(assetControllerService.getAssetById(id));
     }
 

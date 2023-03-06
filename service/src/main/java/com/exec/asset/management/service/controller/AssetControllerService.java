@@ -66,7 +66,7 @@ public class AssetControllerService {
 
     public AssetModel updateAsset(AssetModel assetModel, UUID assetId) {
         if (!assetId.equals(assetModel.getId())) {
-            log.error("AssetControllerService:updateAsset: Asset model and passed in id mismatched", new MismatchedIds(assetModel.getId(), assetId));
+            throw new MismatchedIds(assetModel.getId(), assetId);
         }
 
         log.debug("AssetControllerService:updateAsset: Updating asset with id: {}", assetId);

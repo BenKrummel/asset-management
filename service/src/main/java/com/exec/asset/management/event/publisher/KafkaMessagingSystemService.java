@@ -48,7 +48,7 @@ public class KafkaMessagingSystemService {
         return kafkaTemplate.send(message);
     }
 
-    AssetAggregateEventEntity mapToEntity(AssetAggregateEvent aee) {
+    private AssetAggregateEventEntity mapToEntity(AssetAggregateEvent aee) {
         Object o = aee.getAggregate();
         String payload = o.getClass() == String.class ? (String) o : JsonUtils.toJson(o);
         Date createdAt = new Date();

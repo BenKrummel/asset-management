@@ -45,7 +45,7 @@ paths:
           description: create yard.
   /assets/{id}:
     get:
-      operationId: getAssetsById
+      operationId: getAssetById
       summary: Gets an asset by ID.
       tags:
         - assets
