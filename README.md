@@ -51,6 +51,9 @@ Start up kafka server. Default port is 9092
 
 ## API Reference
 
+The api document can be found
+`api/public-api-v1.yaml`
+
 #### Get all assets
 
 ```http
