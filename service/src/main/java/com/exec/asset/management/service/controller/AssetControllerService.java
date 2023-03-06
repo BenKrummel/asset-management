@@ -127,6 +127,7 @@ public class AssetControllerService {
         }
 
         assetEntity = setParentIdIfValid(assetEntity, parentModel.getParentId());
+        assetEntity.setPromoted(parentModel.getPromoted());
         return assetMapper.mapAssetEntityToAssetModel(assetRepositoryService.saveAsset(assetEntity));
     }
 
