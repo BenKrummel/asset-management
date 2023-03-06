@@ -28,20 +28,22 @@ paths:
             returns a page of assets.
     post:
       operationId: createAsset
-      summary: creates a given asset.
+      summary: |
+        Will first create the parent asset that is passed in the list.
+        Then will create or update the children assets to be linked to parent asset.
       tags:
         - assets
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Asset'
+              $ref: '#/components/schemas/AssetList'
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Asset'
+                $ref: '#/components/schemas/AssetList'
           description: create yard.
   /assets/{id}:
     get:
@@ -124,6 +126,14 @@ components:
         default: 0
         minimum: 0
   schemas:
+    AssetList:
+      properties:
+        ParentAsset:
+          $ref: "#/components/schemas/Asset"
+        ChildAssets:
+          type: array
+          items:
+            $ref: "#/components/schemas/Asset"
     Asset:
       example:
         - id: '8908a9e8-bb6d-11ed-afa1-0242ac120002'

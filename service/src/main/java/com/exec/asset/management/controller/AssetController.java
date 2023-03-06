@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.exec.asset.management.api.AssetsApi;
+import com.exec.asset.management.api.model.AssetListModel;
 import com.exec.asset.management.api.model.AssetModel;
 import com.exec.asset.management.api.model.PagedAssetsModel;
 import com.exec.asset.management.service.controller.AssetControllerService;
@@ -28,8 +29,8 @@ public class AssetController implements AssetsApi {
     }
 
     @Override
-    public ResponseEntity<AssetModel> createAsset(AssetModel assetModel) {
-        return ResponseEntity.ok(assetControllerService.createAsset(assetModel));
+    public ResponseEntity<AssetListModel> createAsset(AssetListModel assetModel) {
+        return ResponseEntity.ok(assetControllerService.createAssetFromList(assetModel));
     }
 
     @Override

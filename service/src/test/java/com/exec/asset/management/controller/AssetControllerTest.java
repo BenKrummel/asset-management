@@ -4,11 +4,11 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.http.HttpStatus;
 
+import com.exec.asset.management.api.model.AssetListModel;
 import com.exec.asset.management.api.model.AssetModel;
 import com.exec.asset.management.domain.entities.AssetEntity;
 import com.exec.asset.management.domain.messages.AssetPromotionEventModel;
@@ -18,7 +18,6 @@ import com.exec.asset.management.exception.ParentAssetDoesNotExistException;
 import com.exec.asset.management.mapper.AssetMapper;
 import com.exec.asset.management.repository.AssetRepository;
 import com.exec.asset.management.service.controller.AssetControllerService;
-import com.exec.asset.management.service.controller.AssetControllerServiceTest;
 import com.exec.asset.management.service.message.AssetPublisherService;
 import com.exec.asset.management.service.repository.AssetRepositoryService;
 
@@ -93,11 +92,13 @@ public class AssetControllerTest {
     public void testCreateAssetNoParentAsset() {
         AssetModel assetModel = new AssetModel();
         assetModel.setPromoted(false);
-        var response = assetController.createAsset(assetModel);
-        AssetEntity assetEntity = assetRepository.getById(response.getBody().getId());
+        AssetListModel assetCreationModel = new AssetListModel();
+        assetCreationModel.setParentAsset(assetModel);
+        var response = assetController.createAsset(assetCreationModel);
+        AssetEntity assetEntity = assetRepository.getById(response.getBody().getParentAsset().getId());
 
-        assertFalse(response.getBody().getPromoted());
-        assertNull(response.getBody().getParentId());
+        assertFalse(response.getBody().getParentAsset().getPromoted());
+        assertNull(response.getBody().getParentAsset().getParentId());
         assertFalse(assetEntity.getPromoted());
         assertNull(assetEntity.getParentId());
     }
@@ -110,11 +111,14 @@ public class AssetControllerTest {
         assetModel.setPromoted(false);
         assetModel.setParentId(parentId);
 
-        var response = assetController.createAsset(assetModel);
-        AssetEntity assetEntity = assetRepository.getById(response.getBody().getId());
+        AssetListModel assetCreationModel = new AssetListModel();
+        assetCreationModel.setParentAsset(assetModel);
+        var response = assetController.createAsset(assetCreationModel);
 
-        assertFalse(response.getBody().getPromoted());
-        assertEquals(parentId, response.getBody().getParentId());
+        AssetEntity assetEntity = assetRepository.getById(response.getBody().getParentAsset().getId());
+
+        assertFalse(response.getBody().getParentAsset().getPromoted());
+        assertEquals(parentId, response.getBody().getParentAsset().getParentId());
         assertFalse(assetEntity.getPromoted());
         assertEquals(parentId, assetEntity.getParentId());
     }
@@ -126,10 +130,13 @@ public class AssetControllerTest {
         assetModel.setPromoted(false);
         assetModel.setParentId(UUID.randomUUID());
 
+        AssetListModel assetCreationModel = new AssetListModel();
+        assetCreationModel.setParentAsset(assetModel);
+
         Exception resultException = null;
 
         try {
-            assetController.createAsset(assetModel);
+            assetController.createAsset(assetCreationModel);
         }
         catch (ParentAssetDoesNotExistException e) {
             resultException = e;

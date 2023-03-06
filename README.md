@@ -74,7 +74,29 @@ The api document can be found
 
 | Body | Type     | Description                       |
 | :-------- | :------- | :-------------------------------- |
-| `Asset`      | `AssetModel` | **Required**. Asset Model Object to create on the backend entity.|
+| `AssetList`      | `AssetListModel` | **Required**. List of assets that have the following structure.|
+
+```aidl
+{
+  "ParentAsset": {
+    "id": "8908a9e8-bb6d-11ed-afa1-0242ac120002",
+    "promoted": false,
+    "parentId": "abf944ce-68a8-40f9-b01f-636f6d28f6b8"
+  },
+  "ChildAssets": [
+    {
+      "id": "ad059da9-3f1b-49bb-8b0e-5be52f7d166e",
+      "promoted": true,
+      "parentId": "8908a9e8-bb6d-11ed-afa1-0242ac120002"
+    },
+    {
+      "id": "3d57ba3b-84cc-4f29-aa45-cb50c24f4370",
+      "promoted": false,
+      "parentId": "8908a9e8-bb6d-11ed-afa1-0242ac120002"
+    }
+  ]
+}
+```
 
 #### Get asset
 

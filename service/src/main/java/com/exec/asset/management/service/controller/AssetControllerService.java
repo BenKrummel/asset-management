@@ -14,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.exec.asset.management.api.model.AssetListModel;
 import com.exec.asset.management.api.model.AssetModel;
 import com.exec.asset.management.api.model.MetaModel;
 import com.exec.asset.management.api.model.PageMetaModel;
@@ -54,14 +55,42 @@ public class AssetControllerService {
         assetRepositoryService.deleteAsset(assetId);
     }
 
-    public AssetModel createAsset(AssetModel assetModel) {
-        UUID parentAssetId = assetModel.getParentId();
-        log.debug("AssetControllerService:createAsset: Creating asset with parent id {}", parentAssetId);
-        AssetEntity assetEntity = assetMapper.mapAssetModelToAssetEntity(assetModel);
+    public AssetListModel createAssetFromList(AssetListModel assetCreationModel) {
+        UUID parentId = null;
+        AssetListModel returnModels = new AssetListModel();
 
-        assetEntity = setParentIdIfValid(assetEntity, parentAssetId);
+        if (assetCreationModel.getParentAsset() != null) {
+            log.debug("AssetControllerService:createAssetFromList: Creating parent Asset");
+            AssetModel parentModel = createAsset(assetCreationModel.getParentAsset());
+            returnModels.setParentAsset(parentModel);
+            parentId = parentModel.getId();
+        }
 
-        return assetMapper.mapAssetEntityToAssetModel(assetRepositoryService.saveAsset(assetEntity));
+        if (assetCreationModel.getChildAssets() != null) {
+            UUID finalParentId = parentId;
+            assetCreationModel.getChildAssets().stream().forEach(assetModel -> {
+                if (assetModel.getId() == null) {
+                    log.debug("AssetControllerService:createAssetFromList: No id on child asset so we don't need to check if it exists.");
+                    assetModel.setParentId(finalParentId);
+                    returnModels.addChildAssetsItem(createAsset(assetModel));
+                }
+                else {
+                    // We are setting the parent id to the id of the parent model we just created.
+                    assetRepositoryService.findAssetById(assetModel.getId()).ifPresentOrElse(assetEntity -> {
+                        log.debug("AssetControllerService:createAssetFromList: Found child asset so just updating parent id to: {}", finalParentId);
+                        assetEntity.setParentId(finalParentId);
+                        assetRepositoryService.saveAsset(assetEntity);
+                        returnModels.addChildAssetsItem(assetMapper.mapAssetEntityToAssetModel(assetEntity));
+                    }, () -> {
+                        log.debug("AssetControllerService:createAssetFromList: No child asset found for id so creating new entity");
+                        assetModel.setParentId(finalParentId);
+                        returnModels.addChildAssetsItem(createAsset(assetModel));
+                    });
+                }
+            });
+        }
+
+        return returnModels;
     }
 
     public AssetModel updateAsset(AssetModel assetModel, UUID assetId) {
@@ -82,6 +111,14 @@ public class AssetControllerService {
         assetEntity = setParentIdIfValid(assetEntity, assetModel.getParentId());
         assetEntity.setPromoted(assetModel.getPromoted());
 
+        return assetMapper.mapAssetEntityToAssetModel(assetRepositoryService.saveAsset(assetEntity));
+    }
+
+    private AssetModel createAsset(AssetModel assetModel) {
+        UUID parentAssetId = assetModel.getParentId();
+        log.debug("AssetControllerService:createAsset: Creating asset with parent id {}", parentAssetId);
+        AssetEntity assetEntity = assetMapper.mapAssetModelToAssetEntity(assetModel);
+        assetEntity = setParentIdIfValid(assetEntity, parentAssetId);
         return assetMapper.mapAssetEntityToAssetModel(assetRepositoryService.saveAsset(assetEntity));
     }
 
@@ -127,7 +164,7 @@ public class AssetControllerService {
         usedUuids.add(asset.getId());
         List<AssetEntity> nestedAssets = assetRepositoryService.getAssetsByParentId(asset.getId());
 
-        if(nestedAssets.isEmpty()) {
+        if (nestedAssets.isEmpty()) {
             log.debug("AssetControllerService:promoteAssetAndNestedAssets: No child assets for parentId: {}", asset.getId());
             return;
         }
@@ -149,6 +186,5 @@ public class AssetControllerService {
                 .entities(assetEntities.stream().map(assetEntity -> assetMapper.mapAssetEntityToAssetModel(assetEntity))
                         .collect(Collectors.toList()));
     }
-
 
 }

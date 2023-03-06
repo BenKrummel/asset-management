@@ -1,11 +1,15 @@
 package com.exec.asset.management.service.controller;
 
+import java.util.List;
+import java.util.UUID;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 
+import com.exec.asset.management.api.model.AssetListModel;
 import com.exec.asset.management.api.model.AssetModel;
 import com.exec.asset.management.domain.entities.AssetEntity;
 import com.exec.asset.management.domain.messages.AssetPromotionEventModel;
@@ -14,6 +18,8 @@ import com.exec.asset.management.repository.AssetRepository;
 import com.exec.asset.management.service.message.AssetPublisherService;
 import com.exec.asset.management.service.repository.AssetRepositoryService;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -69,5 +75,36 @@ public class AssetControllerServiceTest {
         assertTrue(assetRepository.getById(assetModel.getId()).getPromoted());
         assertTrue(assetRepository.findByParentId(assetModel.getId()).stream().allMatch(entity -> entity.getPromoted()));
         assertTrue(assetRepository.findByParentId(secondLevelAsset.getId()).stream().allMatch(entity -> entity.getPromoted()));
+    }
+
+    @Test
+    public void createAssetFromListWithChildrenThatAlreadyExistAndOnesThatDoNot() {
+        AssetEntity childAsset = assetRepository.save(AssetEntity.builder().promoted(false).parentId(UUID.randomUUID()).build());
+
+        AssetListModel assetListModel = new AssetListModel();
+        assetListModel.setParentAsset(createAssetModel(null));
+        assetListModel.addChildAssetsItem(createAssetModel(assetListModel.getParentAsset().getParentId()));
+        assetListModel.addChildAssetsItem(assetMapper.mapAssetEntityToAssetModel(childAsset));
+
+        AssetModel assetModelWithId = createAssetModel(assetListModel.getParentAsset().getParentId());
+        assetModelWithId.setId(UUID.randomUUID());
+        assetListModel.addChildAssetsItem(assetModelWithId);
+
+        var response = assetControllerService.createAssetFromList(assetListModel);
+        UUID parentId = response.getParentAsset().getId();
+
+        assertNull(assetRepository.getById(response.getParentAsset().getId()).getParentId());
+        assertEquals(parentId, assetRepository.getById(response.getChildAssets().get(0).getId()).getParentId());
+        assertEquals(parentId, assetRepository.getById(response.getChildAssets().get(1).getId()).getParentId());
+        assertEquals(parentId, assetRepository.getById(response.getChildAssets().get(2).getId()).getParentId());
+        assertEquals(parentId, assetRepository.getById(childAsset.getId()).getParentId());
+        assertEquals(4, assetRepository.findAll().size());
+    }
+
+    private AssetModel createAssetModel(UUID parentId) {
+        AssetModel assetModel = new AssetModel();
+        assetModel.setPromoted(false);
+        assetModel.setParentId(parentId);
+        return assetModel;
     }
 }
