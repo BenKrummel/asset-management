@@ -44,6 +44,7 @@ Start the server. Default port is 8080
 ```
 
 Start up kafka server. Default port is 9092
+The kafka topic name is `asset.events.asset-promoted`
 
 ```bash
   docker-compose up
