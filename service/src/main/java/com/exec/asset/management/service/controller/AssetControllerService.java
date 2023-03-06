@@ -19,7 +19,6 @@ import com.exec.asset.management.api.model.MetaModel;
 import com.exec.asset.management.api.model.PageMetaModel;
 import com.exec.asset.management.api.model.PagedAssetsModel;
 import com.exec.asset.management.domain.entities.AssetEntity;
-import com.exec.asset.management.event.publisher.KafkaMessagingSystemService;
 import com.exec.asset.management.exception.AssetDoesNotExistException;
 import com.exec.asset.management.exception.MismatchedIds;
 import com.exec.asset.management.exception.ParentAssetDoesNotExistException;
@@ -35,7 +34,6 @@ public class AssetControllerService {
     private AssetRepositoryService assetRepositoryService;
     private AssetMapper assetMapper;
     private AssetPublisherService assetPublisherService;
-    private final List<AssetEntity> updatedAssetList = new ArrayList<>();
 
     @Autowired
     public AssetControllerService(AssetRepositoryService assetRepositoryService, AssetMapper assetMapper, AssetPublisherService assetPublisherService) {
@@ -67,15 +65,17 @@ public class AssetControllerService {
     }
 
     public AssetModel updateAsset(AssetModel assetModel, UUID assetId) {
-        if (!assetId.equals(assetModel)) {
-            throw new MismatchedIds(assetModel.getId(), assetId);
+        if (!assetId.equals(assetModel.getId())) {
+            log.error("AssetControllerService:updateAsset: Asset model and passed in id mismatched", new MismatchedIds(assetModel.getId(), assetId));
         }
 
+        log.debug("AssetControllerService:updateAsset: Updating asset with id: {}", assetId);
         AssetEntity assetEntity = assetRepositoryService.findAssetById(assetId).orElseThrow(() -> new AssetDoesNotExistException(assetId));
 
         // This is under the assumption if we modify an existing asset we shouldn't call promote children if the entity was previously promoted.
         // If this assumption is wrong then the if statement would change to assetModel.getPromoted()
         if (!assetEntity.getPromoted() && assetModel.getPromoted()) {
+            log.debug("AssetControllerService:updateAsset: Promoting the asset and its child assets. entity promoted: {} model promoted: {}", assetEntity.getPromoted(), assetModel.getPromoted());
             promoteChildAssets(assetEntity);
         }
 
@@ -87,7 +87,7 @@ public class AssetControllerService {
 
     private AssetEntity setParentIdIfValid(AssetEntity assetEntity, UUID parentAssetId) {
         if (parentAssetId != null) {
-            log.debug("AssetControllerService:createAsset: Finding parent asset with id {}", parentAssetId);
+            log.debug("AssetControllerService:setParentIdIfValid: Finding parent asset with id {}", parentAssetId);
             AssetEntity parentAssetEntity = assetRepositoryService.findAssetById(parentAssetId).orElseThrow(() -> new ParentAssetDoesNotExistException(parentAssetId));
             assetEntity.setParentId(parentAssetEntity.getId());
         }
@@ -95,23 +95,41 @@ public class AssetControllerService {
     }
 
     public void promoteChildAssets(AssetEntity assetEntity) {
+        log.debug("AssetControllerService:promoteChildAssets: Promoting child assets and asset with id {}", assetEntity.getId());
         // Update the asset and its nested assets
-        promoteAssetAndNestedAssets(assetEntity);
-
-        // Save the updated assets in a single database call
-        assetRepositoryService.saveAll(updatedAssetList);
+        List<UUID> usedUuids = new ArrayList<>();
+        promoteAssetAndNestedAssets(assetEntity, usedUuids);
     }
 
-    private void promoteAssetAndNestedAssets(AssetEntity asset) {
-        asset.setPromoted(true);
-        updatedAssetList.add(asset);
-        assetPublisherService.publishAssetPromotedEvent(assetMapper.mapAssetEntityToAssetPromotionEventModel(asset));
-
-        List<AssetEntity> nestedAssets = assetRepositoryService.getAssetsByParentId(asset.getId());
-        if (nestedAssets != null) {
-            // Process nested assets in parallel
-            nestedAssets.parallelStream().forEach(nestedAsset -> promoteAssetAndNestedAssets(nestedAsset));
+    private void promoteAssetAndNestedAssets(AssetEntity asset, List<UUID> usedUuids) {
+        log.debug("AssetControllerService:promoteAssetAndNestedAssets: Attempting to promote asset id {} previously promoted: {}", asset.getId(), asset.getPromoted());
+        /*
+         * If an asset was already promoted previously we don't need to promote it again.
+         * We still have to search its children though since they could have been added
+         * after the asset was promoted.
+         */
+        if (!asset.getPromoted()) {
+            log.debug("AssetControllerService:promoteAssetAndNestedAssets: Promoting asset with id {}", asset.getId());
+            asset.setPromoted(true);
+            assetRepositoryService.saveAsset(asset);
+            // Publish message to the asset.events.asset-promoted topic.
+            assetPublisherService.publishAssetPromotedEvent(assetMapper.mapAssetEntityToAssetPromotionEventModel(asset));
         }
+
+        if (usedUuids.contains(asset.getId())) {
+            log.debug("AssetControllerService:promoteAssetAndNestedAssets: Found a circling dependency so returning. Asset id: {} Parent id: ", asset.getId(), asset.getParentId());
+            return;
+        }
+
+        usedUuids.add(asset.getId());
+        List<AssetEntity> nestedAssets = assetRepositoryService.getAssetsByParentId(asset.getId());
+        if (!nestedAssets.isEmpty()) {
+            // Process nested assets in parallel
+            log.debug("AssetControllerService:promoteAssetAndNestedAssets: Found child assets number: {} parentId: {}", nestedAssets.size(), asset.getId());
+            // Would want to make this parallel at some point but deadlocks occur since a thread would update the child asset while another is trying to use that asset.
+            nestedAssets.forEach(nestedAsset -> promoteAssetAndNestedAssets(nestedAsset, usedUuids));
+        }
+        return;
     }
 
     private PagedAssetsModel pagedAssetsResponse(Page<AssetEntity> assetEntities) {

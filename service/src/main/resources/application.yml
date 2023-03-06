@@ -2,7 +2,14 @@ debug: true
 spring:
   application.name: asset-management
   profiles.active: ${ASSET_PROFILE:dev}
-  zipkin.enabled: false
+  zipkin:
+    base-url: ${ZIPKIN_BASE_URL:http://zipkin:9411}
+    sender:
+      type: web
+    enabled: true
+  sleuth:
+    sampler:
+      probability: "1.0"
   jpa:
     show-sql: false
     properties:
@@ -39,8 +46,8 @@ spring:
   datasource:
     url: jdbc:sqlserver://localhost:1433;encrypt=false;trustServerCertificate=true
     driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
-    username: ${ASSET_MANAGEMENT_DB_USERNAME:super}
-    password: ${ASSET_MANAGEMENT_DB_PASSWORD:super}
+    username: super
+    password: yourStrong(!)Password
     tenant_identifier_resolver: com.exec.asset.management.util.MultiTenantIdentifierResolver
     multi_tenant_connection_provider: com.exec.asset.management.util.MultiTenantConnectionProviderImpl
 
@@ -48,11 +55,15 @@ asset:
   kafka:
     bootstrap.servers: localhost:9092
     group.id: ${spring.application.name}
-    key.serializer: org.apache.kafka.common.serialization.ByteArraySerializer
-    value.serializer: org.apache.kafka.common.serialization.ByteArraySerializer
+    key.serializer: org.apache.kafka.common.serialization.StringSerializer
+    value.serializer: org.apache.kafka.common.serialization.StringSerializer
     topics:
       asset-promotion: asset.events.asset-promoted
-
+logging:
+  level:
+    root: info
+    com.exec.asset.management: debug
+    org.apache.kafka.clients.NetworkClient: error
 multitenant:
   provisioning:
     database:

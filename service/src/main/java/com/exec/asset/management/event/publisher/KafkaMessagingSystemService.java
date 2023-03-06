@@ -31,23 +31,20 @@ public class KafkaMessagingSystemService {
 
     /**
      * It initialize the KafkaTemplate.
-     *
      */
     public KafkaMessagingSystemService(BaseKafkaConfiguration kafkaProducerConfig, MultiTenantIdentifierResolver multiTenantIdentifierResolver) {
         this.kafkaProducerConfig = kafkaProducerConfig;
         this.multiTenantIdentifierResolver = multiTenantIdentifierResolver;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     public ListenableFuture<SendResult<String, String>> send(AssetAggregateEvent aae) {
         AssetAggregateEventEntity aggregateEventEntity = mapToEntity(aae);
         Message<String> message = createMessage(aggregateEventEntity);
         KafkaTemplate<String, String> kafkaTemplate = kafkaProducerConfig.kafkaTemplate();
 
-        log.debug("Sending message {topic={}, eventId={}, assetId={}, parrentAssetId= {}}", aggregateEventEntity.getAssetId(),
+        log.debug("Sending message {topic={}, eventId={}, assetId={}, parentAssetId= {}}", aggregateEventEntity.getAssetId(),
                 aggregateEventEntity.getEventName(), aggregateEventEntity.getEventId(), aggregateEventEntity.getParentId());
+        kafkaTemplate.setDefaultTopic(aae.getMsgSysTopic());
         return kafkaTemplate.send(message);
     }
 
@@ -74,7 +71,7 @@ public class KafkaMessagingSystemService {
     /**
      * Create the message to be send to messaging service.
      *
-     * @param aggregateEventEntity AggregateEventEntity
+     * @param aggregateEventEntity AssetAggregateEventEntity
      * @return Message
      */
     protected Message<String> createMessage(AssetAggregateEventEntity aggregateEventEntity) {

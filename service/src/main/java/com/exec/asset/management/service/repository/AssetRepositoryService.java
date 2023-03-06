@@ -47,6 +47,7 @@ public class AssetRepositoryService {
     }
 
     public List<AssetEntity> getAssetsByParentId(UUID parentId) {
+        log.debug("AssetRepositoryService:getAssetsByParentId: get child assets for parentId: {}", parentId);
         return assetRepository.findByParentId(parentId);
     }
 

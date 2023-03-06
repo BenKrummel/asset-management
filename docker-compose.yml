@@ -1,0 +1,63 @@
+version: '3'
+volumes:
+  db-data:
+services:
+  app:
+    image: openjdk:11-jdk-slim
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      ASSET_MANAGEMENT_DB_CONNECTION_STRING: jdbc:sqlserver://db:1433;databaseName=assetManagement_public;encrypt=false;trustServerCertificate=true
+      ASSET_MANAGEMENT_DB_USERNAME: super
+      ASSET_MANAGEMENT_DB_PASSWORD: yourStrong(!)Password
+    depends_on:
+      - db
+      - kafdrop
+  db:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    environment:
+      SA_PASSWORD: yourStrong(!)Password
+      ACCEPT_EULA: Y
+      MSSQL_PID: Developer
+      MSSQL_TCP_PORT: 1433
+    ports:
+      - "1433:1433"
+    volumes:
+      - db-data:/var/opt/mssql
+  kafdrop:
+    image: obsidiandynamics/kafdrop:3.8.1
+    depends_on:
+      - kafka
+      - zookeeper
+    expose:
+      - 9000
+    ports:
+      - 9000:9000
+    environment:
+      ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_BROKERCONNECT: kafka:29092
+  kafka:
+    image: wurstmeister/kafka
+    ports:
+      - 9092:9092
+      - 29092:29092
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://kafka:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CREATE_TOPICS: "tenant:1:1"
+  zookeeper:
+    image: wurstmeister/zookeeper
+    ports:
+      - 2181:2181
+  zipkin:
+    image: openzipkin/zipkin
+    environment:
+      - STORAGE_TYPE=mem
+    ports:
+      - "9411:9411"
